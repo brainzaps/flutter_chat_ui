@@ -179,15 +179,6 @@ List<Object> calculateChatMessages(List<types.Message> messages,
           nextMessage.createdAt! - message.createdAt! <= groupMessagesThreshold;
     }
 
-    if (message.type == types.MessageType.custom) {
-      chatMessages.insert(
-        0,
-        CustomHeader(
-            metadata: message.metadata
-        ),
-      );
-      continue;
-    }
 
     if (isFirst && messageHasCreatedAt) {
       chatMessages.insert(
@@ -217,12 +208,22 @@ List<Object> calculateChatMessages(List<types.Message> messages,
       );
     }
 
-    chatMessages.insert(0, {
-      'message': message,
-      'nextMessageInGroup': nextMessageInGroup,
-      'showName': notMyMessage && showUserNames && showName,
-      'showStatus': message.showStatus ?? true,
-    });
+    if (message.type == types.MessageType.custom) {
+      chatMessages.insert(
+        0,
+        CustomHeader(
+            metadata: message.metadata
+        ),
+      );
+    } else {
+      chatMessages.insert(0, {
+        'message': message,
+        'nextMessageInGroup': nextMessageInGroup,
+        'showName': notMyMessage && showUserNames && showName,
+        'showStatus': message.showStatus ?? true,
+      });
+    }
+
 
     if (!nextMessageInGroup && message.type != types.MessageType.system) {
       chatMessages.insert(

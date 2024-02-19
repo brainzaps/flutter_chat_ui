@@ -15,6 +15,7 @@ import '../models/emoji_enlargement_behavior.dart';
 import '../models/message_spacer.dart';
 import '../models/preview_image.dart';
 import '../models/unread_header_data.dart';
+import '../models/custom_header.dart';
 import '../util.dart';
 import 'chat_list.dart';
 import 'image_gallery.dart';
@@ -47,6 +48,7 @@ class Chat extends StatefulWidget {
     this.customStatusBuilder,
     this.dateFormat,
     this.dateHeaderBuilder,
+    this.customHeaderBuilder,
     this.dateHeaderThreshold = 900000,
     this.dateIsUtc = false,
     this.dateLocale,
@@ -107,17 +109,17 @@ class Chat extends StatefulWidget {
 
   /// See [Message.audioMessageBuilder].
   final Widget Function(types.AudioMessage, {required int messageWidth})?
-      audioMessageBuilder;
+  audioMessageBuilder;
 
   /// See [Message.avatarBuilder].
   final Widget Function(types.User author)? avatarBuilder;
 
   /// See [Message.bubbleBuilder].
   final Widget Function(
-    Widget child, {
-    required types.Message message,
-    required bool nextMessageInGroup,
-  })? bubbleBuilder;
+      Widget child, {
+      required types.Message message,
+      required bool nextMessageInGroup,
+      })? bubbleBuilder;
 
   /// See [Message.bubbleRtlAlignment].
   final BubbleRtlAlignment? bubbleRtlAlignment;
@@ -130,17 +132,18 @@ class Chat extends StatefulWidget {
 
   /// See [Message.customMessageBuilder].
   final Widget Function(types.CustomMessage, {required int messageWidth})?
-      customMessageBuilder;
+  customMessageBuilder;
 
   /// See [Message.customStatusBuilder].
   final Widget Function(types.Message message, {required BuildContext context})?
-      customStatusBuilder;
+  customStatusBuilder;
 
   /// Allows you to customize the date format. IMPORTANT: only for the date, do not return time here. See [timeFormat] to customize the time format. [dateLocale] will be ignored if you use this, so if you want a localized date make sure you initialize your [DateFormat] with a locale. See [customDateHeaderText] for more customization.
   final DateFormat? dateFormat;
 
   /// Custom date header builder gives ability to customize date header widget.
   final Widget Function(DateHeader)? dateHeaderBuilder;
+  final Widget Function(CustomHeader)? customHeaderBuilder;
 
   /// Time (in ms) between two messages when we will render a date header.
   /// Default value is 15 minutes, 900000 ms. When time between two messages
@@ -169,7 +172,7 @@ class Chat extends StatefulWidget {
 
   /// See [Message.fileMessageBuilder].
   final Widget Function(types.FileMessage, {required int messageWidth})?
-      fileMessageBuilder;
+  fileMessageBuilder;
 
   /// Time (in ms) between two messages when we will visually group them.
   /// Default value is 1 minute, 60000 ms. When time between two messages
@@ -187,16 +190,16 @@ class Chat extends StatefulWidget {
 
   /// See [Message.imageMessageBuilder].
   final Widget Function(types.ImageMessage, {required int messageWidth})?
-      imageMessageBuilder;
+  imageMessageBuilder;
 
   /// This feature allows you to use a custom image provider.
   /// This is useful if you want to manage image loading yourself, or if you need to cache images.
   /// You can also use the `cached_network_image` feature, but when it comes to caching, you might want to decide on a per-message basis.
   /// Plus, by using this provider, you can choose whether or not to send specific headers based on the URL.
   final ImageProvider Function({
-    required String uri,
-    required Map<String, String>? imageHeaders,
-    required Conditional conditional,
+  required String uri,
+  required Map<String, String>? imageHeaders,
+  required Conditional conditional,
   })? imageProviderBuilder;
 
   /// See [Input.options].
@@ -249,7 +252,7 @@ class Chat extends StatefulWidget {
 
   /// See [Message.onMessageStatusLongPress].
   final void Function(BuildContext context, types.Message)?
-      onMessageStatusLongPress;
+  onMessageStatusLongPress;
 
   /// See [Message.onMessageStatusTap].
   final void Function(BuildContext context, types.Message)? onMessageStatusTap;
@@ -262,7 +265,7 @@ class Chat extends StatefulWidget {
 
   /// See [Message.onPreviewDataFetched].
   final void Function(types.TextMessage, types.PreviewData)?
-      onPreviewDataFetched;
+  onPreviewDataFetched;
 
   /// See [Input.onSendPressed].
   final void Function(types.PartialText) onSendPressed;
@@ -289,10 +292,10 @@ class Chat extends StatefulWidget {
 
   /// See [Message.textMessageBuilder].
   final Widget Function(
-    types.TextMessage, {
-    required int messageWidth,
-    required bool showName,
-  })? textMessageBuilder;
+      types.TextMessage, {
+      required int messageWidth,
+      required bool showName,
+      })? textMessageBuilder;
 
   /// See [Message.textMessageOptions].
   final TextMessageOptions textMessageOptions;
@@ -322,11 +325,11 @@ class Chat extends StatefulWidget {
 
   /// See [Message.videoMessageBuilder].
   final Widget Function(types.VideoMessage, {required int messageWidth})?
-      videoMessageBuilder;
+  videoMessageBuilder;
 
   /// See [Message.slidableMessageBuilder].
   final Widget Function(types.Message, Widget msgWidget)?
-      slidableMessageBuilder;
+  slidableMessageBuilder;
 
   /// See [Message.isLeftStatus].
   /// If true, status will be shown on the left side of the message.
@@ -375,8 +378,7 @@ class ChatState extends State<Chat> {
   }
 
   /// Scroll to the message with the specified [id].
-  void scrollToMessage(
-    String id, {
+  void scrollToMessage(String id, {
     Duration? scrollDuration,
     bool withHighlight = false,
     Duration? highlightDuration,
@@ -403,17 +405,17 @@ class ChatState extends State<Chat> {
 
   Widget _emptyStateBuilder() =>
       widget.emptyState ??
-      Container(
-        alignment: Alignment.center,
-        margin: const EdgeInsets.symmetric(
-          horizontal: 24,
-        ),
-        child: Text(
-          widget.l10n.emptyChatPlaceholder,
-          style: widget.theme.emptyChatPlaceholderTextStyle,
-          textAlign: TextAlign.center,
-        ),
-      );
+          Container(
+            alignment: Alignment.center,
+            margin: const EdgeInsets.symmetric(
+              horizontal: 24,
+            ),
+            child: Text(
+              widget.l10n.emptyChatPlaceholder,
+              style: widget.theme.emptyChatPlaceholderTextStyle,
+              textAlign: TextAlign.center,
+            ),
+          );
 
   /// Only scroll to first unread if there are messages and it is the first open.
   void _maybeScrollToFirstUnread() {
@@ -431,12 +433,13 @@ class ChatState extends State<Chat> {
   }
 
   /// We need the index for auto scrolling because it will scroll until it reaches an index higher or equal that what it is scrolling towards. Index will be null for removed messages. Can just set to -1 for auto scroll.
-  Widget _messageBuilder(
-    Object object,
-    BoxConstraints constraints,
-    int? index,
-  ) {
-    if (object is DateHeader) {
+  Widget _messageBuilder(Object object,
+      BoxConstraints constraints,
+      int? index,) {
+    if (object is CustomHeader) {
+      return widget.customHeaderBuilder?.call(object) ?? const SizedBox();
+    }
+    else if (object is DateHeader) {
       return widget.dateHeaderBuilder?.call(object) ??
           Container(
             alignment: Alignment.center,
@@ -471,13 +474,13 @@ class ChatState extends State<Chat> {
       } else {
         final maxWidth = widget.theme.messageMaxWidth;
         final messageWidth =
-            widget.showUserAvatars && message.author.id != widget.user.id
-                ? min(constraints.maxWidth * widget.messageWidthRatio, maxWidth)
-                    .floor()
-                : min(
-                    constraints.maxWidth * (widget.messageWidthRatio + 0.06),
-                    maxWidth,
-                  ).floor();
+        widget.showUserAvatars && message.author.id != widget.user.id
+            ? min(constraints.maxWidth * widget.messageWidthRatio, maxWidth)
+            .floor()
+            : min(
+          constraints.maxWidth * (widget.messageWidthRatio + 0.06),
+          maxWidth,
+        ).floor();
         final Widget msgWidget = Message(
           audioMessageBuilder: widget.audioMessageBuilder,
           avatarBuilder: widget.avatarBuilder,
@@ -546,7 +549,7 @@ class ChatState extends State<Chat> {
 
   void _onImagePressed(types.ImageMessage message) {
     final initialPage = _gallery.indexWhere(
-      (element) => element.id == message.id && element.uri == message.uri,
+          (element) => element.id == message.id && element.uri == message.uri,
     );
     _galleryPageController = PageController(initialPage: initialPage);
     setState(() {
@@ -554,10 +557,8 @@ class ChatState extends State<Chat> {
     });
   }
 
-  void _onPreviewDataFetched(
-    types.TextMessage message,
-    types.PreviewData previewData,
-  ) {
+  void _onPreviewDataFetched(types.TextMessage message,
+      types.PreviewData previewData,) {
     widget.onPreviewDataFetched?.call(message, previewData);
   }
 
@@ -611,7 +612,8 @@ class ChatState extends State<Chat> {
   }
 
   @override
-  Widget build(BuildContext context) => InheritedUser(
+  Widget build(BuildContext context) =>
+      InheritedUser(
         user: widget.user,
         child: InheritedChatTheme(
           theme: widget.theme,
@@ -626,44 +628,42 @@ class ChatState extends State<Chat> {
                       Flexible(
                         child: widget.messages.isEmpty
                             ? SizedBox.expand(
-                                child: _emptyStateBuilder(),
-                              )
+                          child: _emptyStateBuilder(),
+                        )
                             : GestureDetector(
-                                onTap: () {
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                  widget.onBackgroundTap?.call();
-                                },
-                                child: LayoutBuilder(
-                                  builder: (
-                                    BuildContext context,
-                                    BoxConstraints constraints,
-                                  ) =>
-                                      ChatList(
-                                    bottomWidget: widget.listBottomWidget,
-                                    bubbleRtlAlignment:
-                                        widget.bubbleRtlAlignment!,
-                                    isLastPage: widget.isLastPage,
-                                    itemBuilder: (Object item, int? index) =>
-                                        _messageBuilder(
-                                      item,
-                                      constraints,
-                                      index,
-                                    ),
-                                    items: _chatMessages,
-                                    keyboardDismissBehavior:
-                                        widget.keyboardDismissBehavior,
-                                    onEndReached: widget.onEndReached,
-                                    onEndReachedThreshold:
-                                        widget.onEndReachedThreshold,
-                                    scrollController: _scrollController,
-                                    scrollPhysics: widget.scrollPhysics,
-                                    typingIndicatorOptions:
-                                        widget.typingIndicatorOptions,
-                                    useTopSafeAreaInset:
-                                        widget.useTopSafeAreaInset ?? isMobile,
-                                  ),
+                          onTap: () {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            widget.onBackgroundTap?.call();
+                          },
+                          child: LayoutBuilder(
+                            builder: (BuildContext context,
+                                BoxConstraints constraints,) =>
+                                ChatList(
+                                  bottomWidget: widget.listBottomWidget,
+                                  bubbleRtlAlignment:
+                                  widget.bubbleRtlAlignment!,
+                                  isLastPage: widget.isLastPage,
+                                  itemBuilder: (Object item, int? index) =>
+                                      _messageBuilder(
+                                        item,
+                                        constraints,
+                                        index,
+                                      ),
+                                  items: _chatMessages,
+                                  keyboardDismissBehavior:
+                                  widget.keyboardDismissBehavior,
+                                  onEndReached: widget.onEndReached,
+                                  onEndReachedThreshold:
+                                  widget.onEndReachedThreshold,
+                                  scrollController: _scrollController,
+                                  scrollPhysics: widget.scrollPhysics,
+                                  typingIndicatorOptions:
+                                  widget.typingIndicatorOptions,
+                                  useTopSafeAreaInset:
+                                  widget.useTopSafeAreaInset ?? isMobile,
                                 ),
-                              ),
+                          ),
+                        ),
                       ),
                       widget.customBottomWidget ??
                           Input(
